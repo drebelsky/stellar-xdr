@@ -358,5 +358,12 @@ case 0:
         StellarMessage message;
         HmacSha256Mac mac;
     } v0;
+case 1:
+    struct
+    {
+        uint64 sequence;
+        opaque message<>;
+        HmacSha256Mac mac;
+    } v1;
 };
 }
