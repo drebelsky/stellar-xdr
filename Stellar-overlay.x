@@ -87,7 +87,7 @@ struct PeerAddress
     uint32 numFailures;
 };
 
-// Next ID: 25
+// Next ID: 28
 enum MessageType
 {
     ERROR_MSG = 0,
@@ -124,7 +124,12 @@ enum MessageType
     TIME_SLICED_SURVEY_REQUEST = 21,
     TIME_SLICED_SURVEY_RESPONSE = 22,
     TIME_SLICED_SURVEY_START_COLLECTING = 23,
-    TIME_SLICED_SURVEY_STOP_COLLECTING = 24
+    TIME_SLICED_SURVEY_STOP_COLLECTING = 24,
+
+    // Compact transaction set relay (BIP 0152-style)
+    COMPACT_TX_SET = 25,
+    GET_COMPACT_TX_SET_TXS = 26,
+    COMPACT_TX_SET_TXS = 27
 };
 
 struct DontHave
@@ -292,6 +297,69 @@ struct FloodDemand
     TxDemandVector txHashes;
 };
 
+// --- Compact transaction set relay (BIP 0152-style) ---
+
+// Packed sequence of 6-byte short transaction IDs (SipHash-2-4 truncated).
+// On the wire this is a single opaque blob whose length must be a multiple
+// of 6, avoiding per-element XDR padding.
+typedef opaque PackedShortTxIds<>;
+
+// Compact representation of a sequential phase component (Classic)
+struct CompactTxSetSequentialComponent
+{
+    int64* baseFee;
+    PackedShortTxIds shortTxIds;
+};
+
+// Compact cluster of dependent transactions (parallel phase)
+typedef PackedShortTxIds CompactDependentTxCluster;
+// Compact execution stage: clusters that can run in parallel
+typedef CompactDependentTxCluster CompactParallelTxExecutionStage<>;
+
+// Compact representation of a parallel phase (Soroban)
+struct CompactParallelTxsComponent
+{
+    int64* baseFee;
+    CompactParallelTxExecutionStage executionStages<>;
+};
+
+// Compact representation of a transaction phase
+union CompactTransactionPhase switch (int v)
+{
+case 0:
+    CompactTxSetSequentialComponent v0Components<>;
+case 1:
+    CompactParallelTxsComponent parallelTxsComponent;
+};
+
+// The compact tx set message
+struct CompactTransactionSet
+{
+    Hash txSetHash;
+    uint64 nonce;
+    CompactTransactionPhase phases[2]; // classic + soroban
+};
+
+// Request missing transactions by short ID
+struct GetCompactTxSetTransactions
+{
+    Hash txSetHash;
+    uint64 nonce;
+    PackedShortTxIds shortTxIds;
+};
+
+// Response with full transaction envelopes paired positionally with
+// their 6-byte short IDs.
+struct CompactTxSetTransactions
+{
+    Hash txSetHash;
+    uint64 nonce;
+    PackedShortTxIds shortTxIds;
+    TransactionEnvelope txs<>;
+};
+
+// --- End compact transaction set relay ---
+
 union StellarMessage switch (MessageType type)
 {
 case ERROR_MSG:
@@ -347,6 +415,14 @@ case FLOOD_ADVERT:
      FloodAdvert floodAdvert;
 case FLOOD_DEMAND:
      FloodDemand floodDemand;
+
+// Compact transaction set relay
+case COMPACT_TX_SET:
+    CompactTransactionSet compactTxSet;
+case GET_COMPACT_TX_SET_TXS:
+    GetCompactTxSetTransactions getCompactTxSetTxs;
+case COMPACT_TX_SET_TXS:
+    CompactTxSetTransactions compactTxSetTxs;
 };
 
 union AuthenticatedMessage switch (uint32 v)
