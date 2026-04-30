@@ -359,4 +359,56 @@ case 0:
         HmacSha256Mac mac;
     } v0;
 };
+
+// TODO: for now, only one classic component for the full tx set is supported
+// we also assume compact tx sets are only sent for generalized tx sets
+struct CompactTxSet
+{
+    Hash txSetHash; // hash of the full tx set
+    Hash previousLedgerHash;
+    int64* baseFee;
+    // 6 byte siphashes
+    opaque txs<>;
+};
+
+struct CompactTxSetGet
+{
+    Hash txSetHash;
+};
+
+struct CompactTxSetGetTxs
+{
+    Hash txSetHash;
+    // differentially encoded indices of transactions requested
+    opaque indices<>;
+};
+
+
+// just assume that the receiver is able to recover the hashes they needed
+struct CompactTxSetTxs
+{
+    Hash txSetHash;
+    TransactionEnvelope txs<>;
+};
+
+enum CompactTxSetMessageType
+{
+    COMPACT_TX_SET = 0,
+    COMPACT_TX_SET_GET = 1,
+    COMPACT_TX_SET_GET_TXS = 2,
+    COMPACT_TX_SET_TXS = 3
+};
+
+union CompactTxSetMessage switch (CompactTxSetMessageType type)
+{
+case COMPACT_TX_SET:
+    CompactTxSet compactTxSet;
+case COMPACT_TX_SET_GET:
+    CompactTxSetGet compactTxSetGet;
+case COMPACT_TX_SET_GET_TXS:
+    CompactTxSetGetTxs compactTxSetGetTxs;
+case COMPACT_TX_SET_TXS:
+    CompactTxSetTxs compactTxSetTxs;
+};
+
 }
