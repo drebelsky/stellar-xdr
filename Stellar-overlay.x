@@ -360,13 +360,14 @@ case 0:
     } v0;
 };
 
-// TODO: for now, only one classic component for the full tx set is supported
-// we also assume compact tx sets are only sent for generalized tx sets
+// TODO: we assume compact tx sets are only sent for generalized tx sets
 struct CompactTxSet
 {
     Hash txSetHash; // hash of the full tx set
     Hash previousLedgerHash;
     int64* baseFee;
+    uint32 numSorobanTxs;
+    int64* sorobanBaseFee;
     // 6 byte siphashes
     opaque txs<>;
 };
